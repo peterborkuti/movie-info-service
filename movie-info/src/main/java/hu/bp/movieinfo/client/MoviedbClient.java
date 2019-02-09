@@ -64,13 +64,12 @@ public class MoviedbClient implements IMovieClient {
 	//TODO: exception handling, use localhost to test
 	@Override
 	public List<Movie> getMovieList(String searchString) {
+		Flux<SearchResult> pages = getPageFlux(searchString);;
 
-		Stream<SearchResult> pages = getResultPages(searchString);
-
-		Stream<SearchedMovie> movies = getMovieListFromPages(pages);
+		Flux<SearchedMovie> movies = getMovieListFromPages(pages);
 
 		Stream<Movie> moviesWithDirectors =
-				movies.
+				movies.toStream().
 				map(movie ->
 						Converter.MoviedbSearchedMovieToMovie(movie, getDirectors(movie.getId()))
 				);
@@ -79,33 +78,19 @@ public class MoviedbClient implements IMovieClient {
 	}
 
 
-
-	private Stream<SearchResult> getResultPages(String searchString) {
-		SearchResult firstPage = getResultPage(searchString, 1);
-
-		Flux<SearchResult> remainingPages =
-				getRemainingFluxResultPages(
-						searchString,
-						firstPage.getTotal_pages());
-
-		return Stream.concat(Stream.of(firstPage), remainingPages.toStream());
-	}
-
-	private Stream<SearchedMovie> getMovieListFromPages(Stream<SearchResult> pages) {
+	private Flux<SearchedMovie> getMovieListFromPages(Flux<SearchResult> pages) {
 		return pages.
 				map(page -> page.getResults()).
-				flatMap(movieList -> movieList.stream());
+				flatMap(movieList -> Flux.fromIterable(movieList));
 	}
 
 	@Override
 	public Flux<Movie> getMovieFlux(String searchString) {
-		Flux<SearchResult> pagesFlux = getFluxPages(searchString);
+		Flux<SearchResult> pages = getPageFlux(searchString);;
 
-		Stream<SearchResult> pages = pagesFlux.toStream();
+		Flux<SearchedMovie> movies = getMovieListFromPages(pages);
 
-		List<SearchedMovie> movies = getMovieListFromPages(pages).collect(Collectors.toList());
-
-		Flux<Movie> movieFlux = Flux.fromIterable(movies).
+		Flux<Movie> movieFlux = movies.
 				map(movie ->
 						Converter.MoviedbSearchedMovieToMovie(
 								movie,
@@ -128,6 +113,12 @@ public class MoviedbClient implements IMovieClient {
 		return result;
 	}
 
+	private Flux<SearchResult> getPageFlux(String searchString) {
+		return integersFromOneToIninite().
+				flatMap(i -> getMonoResultPage(searchString, i)).
+				takeUntil(sr -> sr.getTotal_pages() > sr.getPage());
+	}
+
 	private Mono<SearchResult> getMonoResultPage(String searchString, Integer page) {
 		Mono<SearchResult> result = Mono.just(new SearchResult());
 		try {
@@ -139,22 +130,6 @@ public class MoviedbClient implements IMovieClient {
 		}
 
 		return result;
-	}
-
-	private Stream<SearchedMovie> getRemainingResultPages(String searchString, Integer totalPages) {
-		return IntStream.range(2, totalPages).boxed().
-				map(page -> getResultPage(searchString, page)).
-				flatMap(resultPage -> resultPage.getResults().stream());
-	}
-
-	private Flux<SearchResult> getFluxPages(String searchString) {
-		return integersFromOneToIninite().
-				flatMap(i -> getMonoResultPage(searchString, i)).
-				takeUntil(sr -> sr.getTotal_pages() > sr.getPage());
-	}
-	private Flux<SearchResult> getRemainingFluxResultPages(String searchString, Integer totalPages) {
-		return Flux.range(2, totalPages).
-				flatMap(page -> getMonoResultPage(searchString, page));
 	}
 
 	private List<String> getDirectors(Integer movieId) {
