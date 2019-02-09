@@ -6,9 +6,11 @@ import hu.bp.movieinfo.data.moviedb.Credits;
 import hu.bp.movieinfo.data.moviedb.Crew;
 import hu.bp.movieinfo.data.moviedb.SearchResult;
 import hu.bp.movieinfo.data.moviedb.SearchedMovie;
+import hu.bp.movieinfo.data.omdb.DetailedMovie;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -16,11 +18,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyExtractors;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.SslProvider;
 import reactor.netty.tcp.TcpClient;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -60,38 +64,97 @@ public class MoviedbClient implements IMovieClient {
 	//TODO: exception handling, use localhost to test
 	@Override
 	public List<Movie> getMovieList(String searchString) {
-		SearchResult result = getResultPage(searchString, 1);
 
-		Stream<SearchedMovie> moviesInAllResultPagesWithoutDirectors =
-				Stream.of(result).
-						flatMap(res ->
-							Stream.concat(
-								res.getResults().stream(),
-								getRemainingResultPages(searchString, res.getTotal_pages())
-							)
-						).limit(LIMIT_MOVIES);
+		Stream<SearchResult> pages = getResultPages(searchString);
+
+		Stream<SearchedMovie> movies = getMovieListFromPages(pages);
 
 		Stream<Movie> moviesWithDirectors =
-			moviesInAllResultPagesWithoutDirectors.
-					map(movie ->
-							Converter.MoviedbSearchedMovieToMovie(movie, getDirectors(movie.getId()))
-					);
+				movies.
+				map(movie ->
+						Converter.MoviedbSearchedMovieToMovie(movie, getDirectors(movie.getId()))
+				);
 
 		return moviesWithDirectors.collect(Collectors.toList());
 	}
 
+
+
+	private Stream<SearchResult> getResultPages(String searchString) {
+		SearchResult firstPage = getResultPage(searchString, 1);
+
+		Flux<SearchResult> remainingPages =
+				getRemainingFluxResultPages(
+						searchString,
+						firstPage.getTotal_pages());
+
+		return Stream.concat(Stream.of(firstPage), remainingPages.toStream());
+	}
+
+	private Stream<SearchedMovie> getMovieListFromPages(Stream<SearchResult> pages) {
+		return pages.
+				map(page -> page.getResults()).
+				flatMap(movieList -> movieList.stream());
+	}
+
+	@Override
+	public Flux<Movie> getMovieFlux(String searchString) {
+		Flux<SearchResult> pagesFlux = getFluxPages(searchString);
+
+		Stream<SearchResult> pages = pagesFlux.toStream();
+
+		List<SearchedMovie> movies = getMovieListFromPages(pages).collect(Collectors.toList());
+
+		Flux<Movie> movieFlux = Flux.fromIterable(movies).
+				map(movie ->
+						Converter.MoviedbSearchedMovieToMovie(
+								movie,
+								getDirectors(movie.getId())));
+
+		return movieFlux;
+	}
+
 	//TODO: exception handling, use localhost to test
 	private SearchResult getResultPage(String searchString, Integer page) {
-		SearchResult result = client.get().uri(SEARCH_URL, API_KEY, searchString, page).
-				retrieve().bodyToMono(SearchResult.class).block();
+		SearchResult result = new SearchResult();
+		try {
+			result = client.get().uri(SEARCH_URL, API_KEY, searchString, page).
+					retrieve().
+					bodyToMono(SearchResult.class).block();
+		} catch (Exception e) {
+			log.error(e.getMessage());
+		}
+
+		return result;
+	}
+
+	private Mono<SearchResult> getMonoResultPage(String searchString, Integer page) {
+		Mono<SearchResult> result = Mono.just(new SearchResult());
+		try {
+			result = client.get().uri(SEARCH_URL, API_KEY, searchString, page).
+					retrieve().
+					bodyToMono(SearchResult.class);
+		} catch (Exception e) {
+			log.error(e.getMessage());
+		}
 
 		return result;
 	}
 
 	private Stream<SearchedMovie> getRemainingResultPages(String searchString, Integer totalPages) {
-		return IntStream.range(2, totalPages).boxed().limit(LIMIT_PAGE_REQUESTS).
+		return IntStream.range(2, totalPages).boxed().
 				map(page -> getResultPage(searchString, page)).
 				flatMap(resultPage -> resultPage.getResults().stream());
+	}
+
+	private Flux<SearchResult> getFluxPages(String searchString) {
+		return integersFromOneToIninite().
+				flatMap(i -> getMonoResultPage(searchString, i)).
+				takeUntil(sr -> sr.getTotal_pages() > sr.getPage());
+	}
+	private Flux<SearchResult> getRemainingFluxResultPages(String searchString, Integer totalPages) {
+		return Flux.range(2, totalPages).
+				flatMap(page -> getMonoResultPage(searchString, page));
 	}
 
 	private List<String> getDirectors(Integer movieId) {
@@ -123,8 +186,14 @@ public class MoviedbClient implements IMovieClient {
 	}
 
 	private Credits getCredits(Integer movieId) {
-		Credits credits = client.get().uri(CREDITS_URL, movieId, API_KEY).
-				retrieve().bodyToMono(Credits.class).block();
+		Credits credits = new Credits();
+
+		try {
+			credits = client.get().uri(CREDITS_URL, movieId, API_KEY).
+					retrieve().bodyToMono(Credits.class).block();
+		} catch (Exception e) {
+			log.error(e.getStackTrace().toString());
+		}
 
 		return credits;
 	}
@@ -142,7 +211,7 @@ public class MoviedbClient implements IMovieClient {
 						SslContextBuilder.forClient().
 								trustManager(InsecureTrustManagerFactory.INSTANCE)
 				).
-						defaultConfiguration(SslProvider.DefaultConfigurationType.NONE).build();
+		defaultConfiguration(SslProvider.DefaultConfigurationType.NONE).build();
 
 		TcpClient tcpClient = TcpClient.create().secure(sslProvider);
 
@@ -154,6 +223,20 @@ public class MoviedbClient implements IMovieClient {
 				WebClient.builder().clientConnector(httpConnector).baseUrl(baseUrl).build();
 
 		return webClient;
+	}
+
+	private Flux<Integer> integersFromOneToIninite() {
+		Flux<Integer> flux = Flux.generate(
+				() -> 1,
+				(state, sink) -> {
+					sink.next(state);
+					if (state == 10) {
+						sink.complete();
+					}
+					return state + 1;
+				});
+
+		return flux;
 	}
 
 }

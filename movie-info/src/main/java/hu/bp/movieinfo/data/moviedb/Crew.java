@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class Crew {
-	private String job;
-	private String name;
+	private String job = "";
+	private String name = "";
 }

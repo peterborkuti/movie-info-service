@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class SearchedMovie {
-	private Integer id;
-	private String title;
-	private String release_date;
+	private Integer id = 0;
+	private String title = "";
+	private String release_date = "";
 }
