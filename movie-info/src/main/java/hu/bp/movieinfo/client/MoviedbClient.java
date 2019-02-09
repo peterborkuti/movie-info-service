@@ -25,72 +25,73 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+/**
+ * Gets a movie list from themoviedb.org
+ *
+ * It first searches the movies with a given title.
+ * Themoviedb returns with the first page of the results with total number of pages
+ * Then this client gets all the remaining pages to collect the movie list.
+ * Unfortunately, directors are not on the result pages, so
+ * it gets the "credits" list from themoviedb for all the movies to fill in director field.
+ */
 @Slf4j
 @Component
-public class MoviedbClient {
-	// search: https://api.themoviedb.org/3/search/movie?api_key=b477a38fefdc12d4c2d4e93c519d7b53&query=day
-	//credits: https://api.themoviedb.org/3/movie/602/credits?api_key=b477a38fefdc12d4c2d4e93c519d7b53
+public class MoviedbClient implements IMovieClient {
+	private static final int LIMIT_PAGE_REQUESTS = 3;
+	private static final int LIMIT_MOVIES = 100;
 
+	private static final String BASE_URL = "https://api.themoviedb.org";
+	private static final String API_KEY = "b477a38fefdc12d4c2d4e93c519d7b53";
+	private static final String SEARCH_URL = "/3/search/movie?api_key={API_KEY}&query={searchString}&page={page}";
+	private static final String CREDITS_URL = "/3/movie/{movieId}/credits?api_key={API_KEY}";
 	private WebClient client;
 
 	public MoviedbClient() {
-		this.client = buildWebClient("https://api.themoviedb.org");
+		this.client = buildWebClient(BASE_URL);
 	}
 
-	// http://blog.rohrpostix.net/spring-webflux-webclient-using-ssl/
-	// TODO: not for production
-	private WebClient buildWebClient(String baseUrl) {
-		SslProvider sslProvider =
-				SslProvider.builder().sslContext(
-					SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE)
-				).
-				defaultConfiguration(SslProvider.DefaultConfigurationType.NONE).build();
-
-		TcpClient tcpClient = TcpClient.create().secure(sslProvider);
-		HttpClient httpClient = HttpClient.from(tcpClient);
-		ClientHttpConnector httpConnector = new ReactorClientHttpConnector(httpClient);
-
-		WebClient webClient = WebClient.builder().clientConnector(httpConnector).baseUrl(baseUrl).build();
-
-		return webClient;
+	@Override
+	public String getApiName() {
+		return "themoviedb";
 	}
 
-	public List<Movie> search(String searchString) {
-		log.info("MoviedbClient:" + searchString);
-		String search = "/3/search/movie?api_key=b477a38fefdc12d4c2d4e93c519d7b53&query={searchString}";
-		//TODO: exception handling, use localhost to test
+	//TODO: exception handling, use localhost to test
+	@Override
+	public List<Movie> getMovieList(String searchString) {
 		SearchResult result = getResultPage(searchString, 1);
 
-		log.info("ResultSize:" + result.getResults().size());
+		Stream<SearchedMovie> moviesInAllResultPagesWithoutDirectors =
+				Stream.of(result).
+						flatMap(res ->
+							Stream.concat(
+								res.getResults().stream(),
+								getRemainingResultPages(searchString, res.getTotal_pages())
+							)
+						).limit(LIMIT_MOVIES);
 
-		List<SearchedMovie> movies = new ArrayList<>(result.getResults());
+		Stream<Movie> moviesWithDirectors =
+			moviesInAllResultPagesWithoutDirectors.
+					map(movie ->
+							Converter.MoviedbSearchedMovieToMovie(movie, getDirectors(movie.getId()))
+					);
 
-		movies.addAll(
-			IntStream.range(2, result.getTotal_pages()).limit(3).boxed().
-					map(page -> getResultPage(searchString, page)).
-					flatMap(resultPage -> resultPage.getResults().stream()).
-					collect(Collectors.toList())
-		);
-
-		return movies.stream().
-				map(movie -> Converter.MoviedbSearchedMovieToMovie(movie, getDirectors(movie.getId()))).
-				collect(Collectors.toList());
+		return moviesWithDirectors.collect(Collectors.toList());
 	}
 
+	//TODO: exception handling, use localhost to test
 	private SearchResult getResultPage(String searchString, Integer page) {
-		String search = "/3/search/movie?api_key=b477a38fefdc12d4c2d4e93c519d7b53&query={searchString}&page={page}";
-		//TODO: exception handling, use localhost to test
-
-		SearchResult result = client.get().uri(search, searchString, page).
+		SearchResult result = client.get().uri(SEARCH_URL, API_KEY, searchString, page).
 				retrieve().bodyToMono(SearchResult.class).block();
 
 		return result;
 	}
 
-	private static void logResponse(ClientResponse response) {
-		log.info("logresponse - status:" + response.statusCode().getReasonPhrase());
-		response.toEntity(String.class).doOnSuccess(r -> log.info("logresponse - body" + r.getBody()));
+	private Stream<SearchedMovie> getRemainingResultPages(String searchString, Integer totalPages) {
+		return IntStream.range(2, totalPages).boxed().limit(LIMIT_PAGE_REQUESTS).
+				map(page -> getResultPage(searchString, page)).
+				flatMap(resultPage -> resultPage.getResults().stream());
 	}
 
 	private List<String> getDirectors(Integer movieId) {
@@ -122,12 +123,37 @@ public class MoviedbClient {
 	}
 
 	private Credits getCredits(Integer movieId) {
-		String creditsUri = "/3/movie/{movieId}/credits?api_key=b477a38fefdc12d4c2d4e93c519d7b53";
-
-		Credits credits = client.get().uri(creditsUri, movieId).
-				exchange().block().bodyToMono(Credits.class).block();
+		Credits credits = client.get().uri(CREDITS_URL, movieId, API_KEY).
+				retrieve().bodyToMono(Credits.class).block();
 
 		return credits;
+	}
+
+	/**
+	 * Creating an ssl client, so the baseUrl can start with https://
+	 * @param baseUrl the base url of the service
+	 * @return an ssl-enabled webclient
+	 */
+	// http://blog.rohrpostix.net/spring-webflux-webclient-using-ssl/
+	// TODO: not for production
+	private WebClient buildWebClient(String baseUrl) {
+		SslProvider sslProvider =
+				SslProvider.builder().sslContext(
+						SslContextBuilder.forClient().
+								trustManager(InsecureTrustManagerFactory.INSTANCE)
+				).
+						defaultConfiguration(SslProvider.DefaultConfigurationType.NONE).build();
+
+		TcpClient tcpClient = TcpClient.create().secure(sslProvider);
+
+		HttpClient httpClient = HttpClient.from(tcpClient);
+
+		ClientHttpConnector httpConnector = new ReactorClientHttpConnector(httpClient);
+
+		WebClient webClient =
+				WebClient.builder().clientConnector(httpConnector).baseUrl(baseUrl).build();
+
+		return webClient;
 	}
 
 }

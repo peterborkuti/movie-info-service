@@ -1,32 +1,42 @@
 package hu.bp.movieinfo.controller;
 
-import hu.bp.movieinfo.client.MoviedbClient;
-import hu.bp.movieinfo.client.OmbdClient;
-import hu.bp.movieinfo.data.Movies;
-import hu.bp.movieinfo.data.omdb.DetailedMovie;
-import hu.bp.movieinfo.data.omdb.SearchResult;
+import hu.bp.movieinfo.client.ClientFactory;
+import hu.bp.movieinfo.client.IMovieClient;
+import hu.bp.movieinfo.data.Movie;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 @Slf4j
 @RestController
 @RequestMapping("movies")
 public class MovieInfoController {
-
-	@Autowired
-	private OmbdClient ombdClient;
-
-	@Autowired
-	private MoviedbClient moviedbClient;
-
 	@GetMapping(value = "/{movieTitle}")
-	public Movies getMovieInfo(@PathVariable String movieTitle, @RequestParam("api") String apiName) {
+	public Map<String, List<Movie>> getMovieList(
+			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
+
 		log.info("getMovieInfo:" + movieTitle + "," + apiName);
-		//return new Movies(ombdClient.search(movieTitle));
-		return new Movies(moviedbClient.search(movieTitle));
+		IMovieClient client = ClientFactory.get(apiName);
+
+		Map<String, List<Movie>> movies = new HashMap<>();
+
+		movies.put("movies", client.getMovieList(movieTitle));
+
+		return movies;
+	}
+
+	@GetMapping(value = "/flux/{movieTitle}")
+	public Flux<Movie> getMovieFlux(
+			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
+
+		log.info("getFluxMovieInfo:" + movieTitle + "," + apiName);
+		IMovieClient client = ClientFactory.get(apiName);
+
+		return client.getMovieFlux(movieTitle);
 	}
 }

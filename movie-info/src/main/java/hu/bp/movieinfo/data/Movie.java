@@ -28,13 +28,22 @@ public class Movie {
 	@JsonSerialize(using = DirectorSerializer.class)
 	private List<String> directors;
 
-	public Movie() {
+	public Movie() {}
+
+	public Movie(String title, Integer year, String director) {
+		this(
+			title,
+			year,
+			Arrays.asList((director == null) ? new String[]{""} : director.split(","))
+		);
 	}
 
-	public Movie(String title, int year, List<String> directors) {
+	public Movie(String title, Integer year, List<String> directors) {
 		this.title = title;
 		this.year = year;
-		this.directors = directors.stream().collect(Collectors.toList());
+		if (directors != null) {
+			this.directors = directors.stream().collect(Collectors.toList());
+		}
 	}
 }
 
