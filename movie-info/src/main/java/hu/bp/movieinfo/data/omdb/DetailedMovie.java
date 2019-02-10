@@ -11,7 +11,7 @@ import java.util.Arrays;
 @JsonNaming(PropertyNamingStrategy.UpperCamelCaseStrategy.class)
 public class DetailedMovie {
 	private String title;
-	private Integer year;
+	private String year;
 	private String director;
 
 	public Movie toMovie() {

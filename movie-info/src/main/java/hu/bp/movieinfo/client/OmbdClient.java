@@ -1,6 +1,5 @@
 package hu.bp.movieinfo.client;
 
-import hu.bp.movieinfo.data.Converter;
 import hu.bp.movieinfo.data.Movie;
 import hu.bp.movieinfo.data.omdb.DetailedMovie;
 import hu.bp.movieinfo.data.omdb.SearchResult;
@@ -12,7 +11,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -30,46 +28,52 @@ public class OmbdClient implements IMovieClient {
 		return "omdbapi";
 	}
 
-	//TODO: exception handling, use localhost to test
 	public List<Movie> getMovieList(String searchString) {
-		log.info("OmdbapiClient:" + searchString);
-
-		SearchResult result = client.get().uri(ombdUri, searchCommand, searchString).
-				exchange().block().bodyToMono(SearchResult.class).block();
-
-		return result.getSearch().stream().
-				map(this::getDetailedMovie).
-				map(Converter::detailedMovieToMovie).
-				collect(Collectors.toList());
+		return getMovieFlux(searchString).collectList().block();
 	}
 
-	//TODO: exception handling, use localhost to test
 	public Flux<Movie> getMovieFlux(String searchString) {
-		Mono<SearchResult> searchResult =
-				client.get().
-				uri(ombdUri, searchCommand, searchString).
-				retrieve().bodyToMono(SearchResult.class);
+		Mono<SearchResult> searchResult = getPage(searchString);
 
 		Flux<SearchedMovie> imdbIds =
 				searchResult.map(SearchResult::getSearch).
 				flatMapMany(Flux::fromIterable);
 
 		Flux<DetailedMovie> detailedMovieFlux =
-				imdbIds.flatMap(this::getMonoDetailedMovie);
+				imdbIds.flatMap(this::getMovieDetails);
 
-		Flux<Movie> movieFlux = detailedMovieFlux.flatMap(Converter::asyncDetailedMovieToMovie);
+		Flux<Movie> movieFlux = detailedMovieFlux.map(movie -> movie.toMovie());
 
 		return movieFlux;
 	}
 
-	private Mono<DetailedMovie> getMonoDetailedMovie(SearchedMovie movie) {
-		return client.get().uri(ombdUri, detailCommand, movie.getImdbID()).
-				retrieve().bodyToMono(DetailedMovie.class);
+	private Mono<SearchResult> getPage(String searchString) {
+		Mono<SearchResult> result = Mono.just(new SearchResult());
+
+		try {
+			result = client.get().
+					uri(ombdUri, searchCommand, searchString).
+					retrieve().bodyToMono(SearchResult.class);
+
+		} catch (Exception e) {
+			log.error(e.getMessage());
+		}
+
+		return result;
 	}
 
-	private DetailedMovie getDetailedMovie(SearchedMovie movie) {
-		return client.get().uri(ombdUri, detailCommand, movie.getImdbID()).
-				exchange().block().bodyToMono(DetailedMovie.class).block();
+	private Mono<DetailedMovie> getMovieDetails(SearchedMovie movie) {
+		Mono<DetailedMovie> dMovie = Mono.just(new DetailedMovie());
+
+		try {
+			return client.get().uri(ombdUri, detailCommand, movie.getImdbID()).
+					retrieve().bodyToMono(DetailedMovie.class);
+
+		} catch (Exception e) {
+			log.error(e.getMessage());
+		}
+
+		return dMovie;
 	}
 
 }
