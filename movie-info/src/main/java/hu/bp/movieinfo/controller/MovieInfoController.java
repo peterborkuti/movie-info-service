@@ -16,27 +16,22 @@ import java.util.Map;
 @RestController
 @RequestMapping("movies")
 public class MovieInfoController {
+	private MovieInfoControllerLogic logic;
+
+	public MovieInfoController(MovieInfoControllerLogic logic) {
+		this.logic = logic;
+	}
+
 	@GetMapping(value = "/{movieTitle}")
 	public Map<String, List<Movie>> getMovieList(
 			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
 
-		log.info("getMovieInfo:" + movieTitle + "," + apiName);
-		IMovieClient client = ClientFactory.get(apiName);
-
-		Map<String, List<Movie>> movies = new HashMap<>();
-
-		movies.put("movies", client.getMovieList(movieTitle));
-
-		return movies;
+		return logic.getMovieList(movieTitle, apiName);
 	}
 
 	@GetMapping(value = "/flux/{movieTitle}")
 	public Flux<Movie> getMovieFlux(
 			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
-
-		log.info("getFluxMovieInfo:" + movieTitle + "," + apiName);
-		IMovieClient client = ClientFactory.get(apiName);
-
-		return client.getMovieFlux(movieTitle);
+		return logic.getMovieFlux(movieTitle, apiName);
 	}
 }
