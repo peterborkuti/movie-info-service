@@ -10,11 +10,16 @@ import java.util.Arrays;
 @Data
 @JsonNaming(PropertyNamingStrategy.UpperCamelCaseStrategy.class)
 public class DetailedMovie {
-	private String title;
-	private String year;
-	private String director;
+	private String id = "";
+	private String title = "";
+	private String year = "";
+	private String director = "";
 
 	public Movie toMovie() {
-		return new Movie(title, year, Arrays.asList(new String[]{director}));
+		Movie movie = new Movie(title, year);
+		movie.setDirectors(director);
+		movie.setId(id);
+
+		return movie;
 	}
 }

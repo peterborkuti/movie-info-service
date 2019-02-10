@@ -61,8 +61,13 @@ public class Movie {
 		this.title = (title == null) ? "" : title;
 	}
 
-	public void setYear(String year) {
-		this.year = (year == null) ? "" : year.split("-")[0];
+	public void setYear(String date) {
+		year = "";
+
+		if (date != null) {
+			String[] parts = date.split("[^0-9]");
+			year = (parts.length > 0) ? parts[0] : date;
+		}
 	}
 
 	public void setDirectors(String directors) {
