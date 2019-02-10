@@ -1,5 +1,6 @@
 package hu.bp.movieinfo.client;
 
+import hu.bp.movieinfo.MovieInfoConfigurationProperties;
 import hu.bp.movieinfo.data.Movie;
 import hu.bp.movieinfo.data.omdb.DetailedMovie;
 import hu.bp.movieinfo.data.omdb.SearchResult;
@@ -14,14 +15,22 @@ import java.util.List;
 
 @Slf4j
 @Component
-public class OmbdClient implements IMovieClient {
-	private String ombdUri = "/?apikey=c177aaab&{command}={commandParam}";
-	private String searchCommand = "s";
-	private String detailCommand = "i";
-	//http://www.omdbapi.com/?apikey=c177aaab&s=
-	private WebClient client = WebClient.builder().
-			baseUrl("http://www.omdbapi.com").
-			build();
+public class OmdbClient implements IMovieClient {
+	private static String OMDBAPI_URL = "/?apikey={API_KEY}&{command}={commandParam}";
+	private static String SEARCH_COMMAND = "s";
+	private static String DETAIL_COMMAND = "i";
+	private static String BASE_URL = "http://www.omdbapi.com";
+
+	private final String API_KEY;
+	private final WebClient client;
+
+	public OmdbClient(MovieInfoConfigurationProperties properties) {
+		API_KEY = properties.getOmdbapi_api_key();
+
+		client = WebClient.builder().
+				baseUrl(BASE_URL).
+				build();
+	}
 
 	@Override
 	public String getApiName() {
@@ -52,7 +61,7 @@ public class OmbdClient implements IMovieClient {
 
 		try {
 			result = client.get().
-					uri(ombdUri, searchCommand, searchString).
+					uri(OMDBAPI_URL, API_KEY, SEARCH_COMMAND, searchString).
 					retrieve().bodyToMono(SearchResult.class);
 
 		} catch (Exception e) {
@@ -66,7 +75,7 @@ public class OmbdClient implements IMovieClient {
 		Mono<DetailedMovie> dMovie = Mono.just(new DetailedMovie());
 
 		try {
-			return client.get().uri(ombdUri, detailCommand, movie.getImdbID()).
+			return client.get().uri(OMDBAPI_URL, API_KEY, DETAIL_COMMAND, movie.getImdbID()).
 					retrieve().bodyToMono(DetailedMovie.class);
 
 		} catch (Exception e) {

@@ -1,29 +1,26 @@
 package hu.bp.movieinfo.client;
 
+import hu.bp.movieinfo.MovieInfoConfigurationProperties;
 import hu.bp.movieinfo.data.Movie;
 import hu.bp.movieinfo.data.moviedb.Credits;
-import hu.bp.movieinfo.data.moviedb.Crew;
 import hu.bp.movieinfo.data.moviedb.SearchResult;
 import hu.bp.movieinfo.data.moviedb.SearchedMovie;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.SslProvider;
 import reactor.netty.tcp.TcpClient;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * Gets a movie list from themoviedb.org
@@ -37,15 +34,18 @@ import java.util.List;
 @Slf4j
 @Component
 public class MoviedbClient implements IMovieClient {
-	private static final String API_KEY = "b477a38fefdc12d4c2d4e93c519d7b53";
 	private static final String BASE_URL = "https://api.themoviedb.org";
 	private static final String CREDITS_URL = "/3/movie/{movieId}/credits?api_key={API_KEY}";
-	private static final String SEARCH_URL = "/3/search/movie?api_key={API_KEY}&query={searchString}&page={page}";
+	private static final String SEARCH_URL =
+			"/3/search/movie?api_key={API_KEY}&query={searchString}&page={page}";
+
+	private String API_KEY;
 
 	private WebClient client;
 
-	public MoviedbClient() {
+	public MoviedbClient(MovieInfoConfigurationProperties properties) {
 		this.client = buildWebClient(BASE_URL);
+		this.API_KEY = properties.getThemoviedb_api_key();
 	}
 
 	@Override
@@ -86,7 +86,7 @@ public class MoviedbClient implements IMovieClient {
 	}
 
 	private Flux<SearchResult> getAllPages(String searchString) {
-		return integersFromOneToInfinite().
+		return Flux.fromStream(IntStream.iterate(1, i -> i + 1).boxed()).
 				flatMap(i -> getPage(searchString, i), 1).
 				takeUntil(sr -> sr.getTotal_pages() < sr.getPage());
 	}
@@ -173,36 +173,9 @@ public class MoviedbClient implements IMovieClient {
 
 		WebClient webClient =
 				WebClient.builder().
-				filter(logRequest()).
 				clientConnector(httpConnector).baseUrl(baseUrl).build();
 
 		return webClient;
 	}
-
-	private static ExchangeFilterFunction logRequest() {
-		return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
-			log.info("BPRequest: {} {}", clientRequest.method(), clientRequest.url());
-			clientRequest.headers().forEach((name, values) -> values.forEach(value -> log.info("BP{}={}", name, value)));
-			return Mono.just(clientRequest);
-		});
-	}
-
-	@ExceptionHandler(WebClientResponseException.class)
-	public ResponseEntity<String> handleWebClientResponseException(WebClientResponseException ex) {
-		log.error("BPError from WebClient - Status {}, Body {}", ex.getRawStatusCode(), ex.getResponseBodyAsString(), ex);
-		return ResponseEntity.status(ex.getRawStatusCode()).body(ex.getResponseBodyAsString());
-	}
-
-	private Flux<Integer> integersFromOneToInfinite() {
-		Flux<Integer> flux = Flux.generate(
-				() -> 1,
-				(state, sink) -> {
-					sink.next(state);
-					return state + 1;
-				});
-
-		return flux;
-	}
-
 
 }
