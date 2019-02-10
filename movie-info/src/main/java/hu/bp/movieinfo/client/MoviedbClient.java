@@ -2,21 +2,27 @@ package hu.bp.movieinfo.client;
 
 import hu.bp.movieinfo.data.Movie;
 import hu.bp.movieinfo.data.moviedb.Credits;
+import hu.bp.movieinfo.data.moviedb.Crew;
 import hu.bp.movieinfo.data.moviedb.SearchResult;
 import hu.bp.movieinfo.data.moviedb.SearchedMovie;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.SslProvider;
 import reactor.netty.tcp.TcpClient;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -60,11 +66,10 @@ public class MoviedbClient implements IMovieClient {
 
 		Flux<Movie> movieFlux = movies.
 				map(this::searchedMovieToMovie).
-				flatMap(movie -> movie.setDirectors(getDirectors(movie.getId())));
+				flatMap(movie -> movie.setDirectors(getDirectors(movie.getId())), 1);
 
 		return movieFlux;
 	}
-
 
 	private Flux<SearchedMovie> getMovieListFromPages(Flux<SearchResult> pages) {
 		return pages.
@@ -82,16 +87,26 @@ public class MoviedbClient implements IMovieClient {
 
 	private Flux<SearchResult> getAllPages(String searchString) {
 		return integersFromOneToInfinite().
-				flatMap(i -> getPage(searchString, i)).
-				takeUntil(sr -> sr.getTotal_pages() > sr.getPage());
+				flatMap(i -> getPage(searchString, i), 1).
+				takeUntil(sr -> sr.getTotal_pages() < sr.getPage());
 	}
 
 	private Mono<SearchResult> getPage(String searchString, Integer page) {
 		Mono<SearchResult> result = Mono.just(new SearchResult());
+
 		try {
 			result = client.get().uri(SEARCH_URL, API_KEY, searchString, page).
-					retrieve().
-					bodyToMono(SearchResult.class);
+					exchange().
+					log().
+					flatMap(response -> {
+						if (response.statusCode().is4xxClientError()) {
+							SearchResult sr = new SearchResult();
+							return Mono.just(sr);
+						}
+						else {
+							return response.bodyToMono(SearchResult.class);
+						}
+					});
 
 		} catch (Exception e) {
 			log.error(e.getMessage());
@@ -116,7 +131,17 @@ public class MoviedbClient implements IMovieClient {
 
 		try {
 			credits = client.get().uri(CREDITS_URL, movieId, API_KEY).
-					retrieve().bodyToMono(Credits.class);
+					exchange().
+					log().
+					flatMap(response -> {
+						if (response.statusCode().is4xxClientError()) {
+							Credits c = new Credits();
+							return Mono.just(c);
+						}
+						else {
+							return response.bodyToMono(Credits.class);
+						}
+					});
 
 		} catch (Exception e) {
 			log.error(e.getStackTrace().toString());
@@ -147,9 +172,25 @@ public class MoviedbClient implements IMovieClient {
 		ClientHttpConnector httpConnector = new ReactorClientHttpConnector(httpClient);
 
 		WebClient webClient =
-				WebClient.builder().clientConnector(httpConnector).baseUrl(baseUrl).build();
+				WebClient.builder().
+				filter(logRequest()).
+				clientConnector(httpConnector).baseUrl(baseUrl).build();
 
 		return webClient;
+	}
+
+	private static ExchangeFilterFunction logRequest() {
+		return ExchangeFilterFunction.ofRequestProcessor(clientRequest -> {
+			log.info("BPRequest: {} {}", clientRequest.method(), clientRequest.url());
+			clientRequest.headers().forEach((name, values) -> values.forEach(value -> log.info("BP{}={}", name, value)));
+			return Mono.just(clientRequest);
+		});
+	}
+
+	@ExceptionHandler(WebClientResponseException.class)
+	public ResponseEntity<String> handleWebClientResponseException(WebClientResponseException ex) {
+		log.error("BPError from WebClient - Status {}, Body {}", ex.getRawStatusCode(), ex.getResponseBodyAsString(), ex);
+		return ResponseEntity.status(ex.getRawStatusCode()).body(ex.getResponseBodyAsString());
 	}
 
 	private Flux<Integer> integersFromOneToInfinite() {
@@ -162,5 +203,6 @@ public class MoviedbClient implements IMovieClient {
 
 		return flux;
 	}
+
 
 }
