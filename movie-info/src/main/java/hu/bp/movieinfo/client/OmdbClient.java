@@ -2,6 +2,7 @@ package hu.bp.movieinfo.client;
 
 import hu.bp.movieinfo.MovieInfoConfigurationProperties;
 import hu.bp.movieinfo.data.Movie;
+import hu.bp.movieinfo.data.omdb.Converter;
 import hu.bp.movieinfo.data.omdb.DetailedMovie;
 import hu.bp.movieinfo.data.omdb.SearchResult;
 import hu.bp.movieinfo.data.omdb.SearchedMovie;
@@ -51,7 +52,7 @@ public class OmdbClient implements IMovieClient {
 		Flux<DetailedMovie> detailedMovieFlux =
 				imdbIds.flatMap(this::getMovieDetails);
 
-		Flux<Movie> movieFlux = detailedMovieFlux.map(movie -> movie.toMovie());
+		Flux<Movie> movieFlux = detailedMovieFlux.map(detailedMovie -> Converter.toMovie(detailedMovie, new Movie()));
 
 		return movieFlux;
 	}

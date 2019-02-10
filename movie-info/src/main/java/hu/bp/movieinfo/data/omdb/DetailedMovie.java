@@ -14,12 +14,4 @@ public class DetailedMovie {
 	private String title = "";
 	private String year = "";
 	private String director = "";
-
-	public Movie toMovie() {
-		Movie movie = new Movie(title, year);
-		movie.setDirectors(director);
-		movie.setId(id);
-
-		return movie;
-	}
 }
