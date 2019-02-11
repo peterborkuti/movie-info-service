@@ -42,9 +42,11 @@ public class MoviedbClient implements IMovieClient {
 	private String API_KEY;
 
 	private WebClient client;
+	private WebClientHelper helper;
 
-	public MoviedbClient(MovieInfoConfigurationProperties properties) {
+	public MoviedbClient(MovieInfoConfigurationProperties properties, WebClientHelper helper) {
 		this.client = buildWebClient(BASE_URL);
+		this.helper = helper;
 		this.API_KEY = properties.getThemoviedb_api_key();
 	}
 
@@ -94,27 +96,12 @@ public class MoviedbClient implements IMovieClient {
 	}
 
 	private Mono<SearchResult> getPage(String searchString, Integer page) {
-		Mono<SearchResult> result = Mono.just(new SearchResult());
-
-		try {
-			result = client.get().uri(SEARCH_URL, API_KEY, searchString, page).
-					exchange().
-					flatMap(response -> {
-						if (response.statusCode().is4xxClientError()) {
-							log.error(response.statusCode().getReasonPhrase());
-							SearchResult sr = new SearchResult();
-							return Mono.just(sr);
-						}
-						else {
-							return response.bodyToMono(SearchResult.class);
-						}
-					});
-
-		} catch (Exception e) {
-			log.error(e.getMessage());
-		}
-
-		return result;
+		return helper.webGet(
+				client,
+				SEARCH_URL,
+				new String[]{API_KEY, searchString, "" + page},
+				SearchResult.class,
+				Mono.just(new SearchResult()));
 	}
 
 	private Flux<String> getDirectors(String movieId) {
@@ -129,27 +116,12 @@ public class MoviedbClient implements IMovieClient {
 	}
 
 	private Mono<Credits> getCredits(String movieId) {
-		Mono<Credits> credits = Mono.just(new Credits());
-
-		try {
-			credits = client.get().uri(CREDITS_URL, movieId, API_KEY).
-					exchange().
-					flatMap(response -> {
-						if (response.statusCode().is4xxClientError()) {
-							log.error(response.statusCode().getReasonPhrase());
-							Credits c = new Credits();
-							return Mono.just(c);
-						}
-						else {
-							return response.bodyToMono(Credits.class);
-						}
-					});
-
-		} catch (Exception e) {
-			log.error(e.getStackTrace().toString());
-		}
-
-		return credits;
+		return helper.webGet(
+				client,
+				CREDITS_URL,
+				new String[]{movieId, API_KEY},
+				Credits.class,
+				Mono.just(new Credits()));
 	}
 
 	/**

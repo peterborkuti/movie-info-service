@@ -30,13 +30,16 @@ public class OmdbClient implements IMovieClient {
 
 	private final String API_KEY;
 	private final WebClient client;
+	private final WebClientHelper helper;
 
-	public OmdbClient(MovieInfoConfigurationProperties properties) {
+	public OmdbClient(MovieInfoConfigurationProperties properties, WebClientHelper helper) {
 		API_KEY = properties.getOmdbapi_api_key();
 
 		client = WebClient.builder().
 				baseUrl(BASE_URL).
 				build();
+
+		this.helper = helper;
 	}
 
 	@Override
@@ -64,54 +67,23 @@ public class OmdbClient implements IMovieClient {
 	}
 
 	private Mono<SearchResult> getPage(String searchString) {
-		Mono<SearchResult> result = Mono.just(new SearchResult());
-
-		try {
-			result = client.get().
-					uri(OMDBAPI_URL, API_KEY, SEARCH_COMMAND, searchString).
-					exchange().
-					flatMap(response -> {
-						if (response.statusCode().is4xxClientError()) {
-							log.error(response.statusCode().getReasonPhrase());
-							SearchResult sr = new SearchResult();
-
-							return Mono.just(sr);
-						}
-						else {
-							return response.bodyToMono(SearchResult.class);
-						}
-					});
-
-		} catch (Exception e) {
-			log.error(e.getMessage());
-		}
-
-		return result;
+		return helper.webGet(
+					client,
+					OMDBAPI_URL,
+					new String[] {API_KEY, SEARCH_COMMAND, searchString},
+					SearchResult.class,
+					Mono.just(new SearchResult())
+				);
 	}
 
 	private Mono<DetailedMovie> getMovieDetails(SearchedMovie movie) {
-		Mono<DetailedMovie> dMovie = Mono.just(new DetailedMovie());
-
-		try {
-			return client.get().uri(OMDBAPI_URL, API_KEY, DETAIL_COMMAND, movie.getImdbID()).
-					exchange().
-					flatMap(response -> {
-						if (response.statusCode().is4xxClientError()) {
-							log.error(response.statusCode().getReasonPhrase());
-							DetailedMovie dm = new DetailedMovie();
-
-							return Mono.just(dm);
-						}
-						else {
-							return response.bodyToMono(DetailedMovie.class);
-						}
-					});
-
-		} catch (Exception e) {
-			log.error(e.getMessage());
-		}
-
-		return dMovie;
+		return helper.webGet(
+				client,
+				OMDBAPI_URL,
+				new String[] {API_KEY, DETAIL_COMMAND, movie.getImdbID()},
+				DetailedMovie.class,
+				Mono.just(new DetailedMovie())
+		);
 	}
 
 }
