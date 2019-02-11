@@ -1,4 +1,16 @@
 # Movie Info
+## using with ./mvnw
+
+### build && run
+
+./mvnw clean install; java -jar target/movie-info-0.0.1-SNAPSHOT.jar
+
+or
+
+* ./mvnw clean install
+* ./mvnw spring-boot:run
+
+
 ## using with docker
 
 ### dockerhub
@@ -26,7 +38,5 @@ Examples:
 curl -i http://localhost:8080/movies/transformation?api=omdbapi
 curl -i http://localhost:8080/movies/transformation?api=themoviedb
 curl -i http://localhost:8080/movies/flux/transformation?api=omdbapi
-
-
 
 
