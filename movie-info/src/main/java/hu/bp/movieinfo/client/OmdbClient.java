@@ -12,8 +12,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
 import java.util.List;
 
+/**
+ * Gets movie list from omdb.
+ * First it searches after a title. Omdb returns with one page with a movie list
+ */
 @Slf4j
 @Component
 public class OmdbClient implements IMovieClient {
@@ -63,7 +68,18 @@ public class OmdbClient implements IMovieClient {
 		try {
 			result = client.get().
 					uri(OMDBAPI_URL, API_KEY, SEARCH_COMMAND, searchString).
-					retrieve().bodyToMono(SearchResult.class);
+					exchange().
+					flatMap(response -> {
+						if (response.statusCode().is4xxClientError()) {
+							log.error(response.statusCode().getReasonPhrase());
+							SearchResult sr = new SearchResult();
+
+							return Mono.just(sr);
+						}
+						else {
+							return response.bodyToMono(SearchResult.class);
+						}
+					});
 
 		} catch (Exception e) {
 			log.error(e.getMessage());
@@ -77,7 +93,18 @@ public class OmdbClient implements IMovieClient {
 
 		try {
 			return client.get().uri(OMDBAPI_URL, API_KEY, DETAIL_COMMAND, movie.getImdbID()).
-					retrieve().bodyToMono(DetailedMovie.class);
+					exchange().
+					flatMap(response -> {
+						if (response.statusCode().is4xxClientError()) {
+							log.error(response.statusCode().getReasonPhrase());
+							DetailedMovie dm = new DetailedMovie();
+
+							return Mono.just(dm);
+						}
+						else {
+							return response.bodyToMono(DetailedMovie.class);
+						}
+					});
 
 		} catch (Exception e) {
 			log.error(e.getMessage());

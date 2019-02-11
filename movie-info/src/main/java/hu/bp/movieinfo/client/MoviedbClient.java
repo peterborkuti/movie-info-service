@@ -97,9 +97,9 @@ public class MoviedbClient implements IMovieClient {
 		try {
 			result = client.get().uri(SEARCH_URL, API_KEY, searchString, page).
 					exchange().
-					log().
 					flatMap(response -> {
 						if (response.statusCode().is4xxClientError()) {
+							log.error(response.statusCode().getReasonPhrase());
 							SearchResult sr = new SearchResult();
 							return Mono.just(sr);
 						}
@@ -132,9 +132,9 @@ public class MoviedbClient implements IMovieClient {
 		try {
 			credits = client.get().uri(CREDITS_URL, movieId, API_KEY).
 					exchange().
-					log().
 					flatMap(response -> {
 						if (response.statusCode().is4xxClientError()) {
+							log.error(response.statusCode().getReasonPhrase());
 							Credits c = new Credits();
 							return Mono.just(c);
 						}
