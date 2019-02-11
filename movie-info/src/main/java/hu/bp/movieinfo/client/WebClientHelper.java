@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 @Slf4j
 @Service
 public class WebClientHelper {
@@ -13,16 +15,9 @@ public class WebClientHelper {
 
 		try {
 			mono = client.get().uri(url, urlArgs).
-					exchange().
-					flatMap(response -> {
-						if (response.statusCode().is4xxClientError()) {
-							log.error(response.statusCode().getReasonPhrase());
-							return monoObject;
-						}
-						else {
-							return response.bodyToMono(bodyClass);
-						}
-					});
+					retrieve().
+					bodyToMono(bodyClass).
+					retryBackoff(10, Duration.ofSeconds(2));
 
 		} catch (Exception e) {
 			log.error(e.getStackTrace().toString());

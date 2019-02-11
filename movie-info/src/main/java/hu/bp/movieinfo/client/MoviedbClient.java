@@ -1,5 +1,6 @@
 package hu.bp.movieinfo.client;
 
+import ch.qos.logback.core.util.FixedDelay;
 import hu.bp.movieinfo.MovieInfoConfigurationProperties;
 import hu.bp.movieinfo.data.Movie;
 import hu.bp.movieinfo.data.moviedb.Credits;
@@ -19,6 +20,7 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.tcp.SslProvider;
 import reactor.netty.tcp.TcpClient;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -34,6 +36,7 @@ import java.util.stream.IntStream;
 @Slf4j
 @Component
 public class MoviedbClient implements IMovieClient {
+	private static int MAX_PAGES = 10;
 	private static final String BASE_URL = "https://api.themoviedb.org";
 	private static final String CREDITS_URL = "/3/movie/{movieId}/credits?api_key={API_KEY}";
 	private static final String SEARCH_URL =
@@ -68,7 +71,7 @@ public class MoviedbClient implements IMovieClient {
 
 		Flux<Movie> movieFlux = movies.
 				map(this::searchedMovieToMovie).
-				flatMap(movie -> movie.setDirectors(getDirectors(movie.getId())));
+				flatMap(movie -> movie.setDirectors(getDirectors(movie.getId()))).limitRate(1).delayElements(Duration.ofMillis(100));
 
 		return movieFlux;
 	}
@@ -91,7 +94,7 @@ public class MoviedbClient implements IMovieClient {
 		Mono<SearchResult> firstPage = getPage(searchString, 1);
 
 		Flux<SearchResult> otherPages = firstPage.flatMapMany(fp ->
-			Flux.range(2, fp.getTotal_pages()).
+			Flux.range(2, Math.min(fp.getTotal_pages(), MAX_PAGES)).
 					flatMap(i -> getPage(searchString, i), 1)
 		);
 
