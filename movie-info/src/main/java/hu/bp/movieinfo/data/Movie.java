@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import hu.bp.movieinfo.data.moviedb.SearchedMovie;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -21,6 +22,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Data
 @JsonPropertyOrder({ "title", "year", "director" })
 @JsonNaming(PropertyNamingStrategy.UpperCamelCaseStrategy.class)
@@ -79,15 +81,19 @@ public class Movie {
 		}
 	}
 
-	public void setDirectors(List<String> directors) {
+	public Movie setDirectors(List<String> directors) {
 		if (directors == null) {
 			this.directors = new ArrayList<>();
 		}
 		else {
 			this.directors = directors.stream().collect(Collectors.toList());
 		}
+
+		return this;
 	}
 
+	//TODO: Flux in a Flux seems to me not working 100%
+	//Sometimes directors remains empty sometimes not
 	public Mono<Movie> setDirectors(Flux<String> directors) {
 		this.directors = new ArrayList<>();
 		directors.subscribe(this::addDirector);
