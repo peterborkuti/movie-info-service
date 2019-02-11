@@ -68,7 +68,7 @@ public class MoviedbClient implements IMovieClient {
 
 		Flux<Movie> movieFlux = movies.
 				map(this::searchedMovieToMovie).
-				map(movie -> movie.setDirectors(getDirectors(movie.getId())));
+				flatMap(movie -> movie.setDirectors(getDirectors(movie.getId())));
 
 		return movieFlux;
 	}
@@ -88,13 +88,14 @@ public class MoviedbClient implements IMovieClient {
 	}
 
 	private Flux<SearchResult> getAllPages(String searchString) {
-		SearchResult firstPage = getPage(searchString, 1).block();
+		Mono<SearchResult> firstPage = getPage(searchString, 1);
 
-		Flux<SearchResult> otherPages = Flux.fromStream(IntStream.iterate(2, i -> i + 1).boxed()).
-				flatMap(i -> getPage(searchString, i), 1).
-				takeWhile(sr -> firstPage.getTotal_pages() >= sr.getPage());
+		Flux<SearchResult> otherPages = firstPage.flatMapMany(fp ->
+			Flux.range(2, fp.getTotal_pages()).
+					flatMap(i -> getPage(searchString, i), 1)
+		);
 
-		return Flux.concat(Flux.just(firstPage), otherPages);
+		return Flux.concat(firstPage, otherPages);
 	}
 
 	private Mono<SearchResult> getPage(String searchString, Integer page) {
@@ -106,12 +107,12 @@ public class MoviedbClient implements IMovieClient {
 				Mono.just(new SearchResult()));
 	}
 
-	private List<String> getDirectors(String movieId) {
+	private Flux<String> getDirectors(String movieId) {
 		Mono<Credits> credits = getCredits(movieId);
-		List<String> directors =
+		Flux<String> directors =
 				credits.flatMapMany(c -> Flux.fromIterable(c.getCrew())).
 				filter(person -> "Director".equals(person.getJob())).
-				map(director -> director.getName()).collectList().block();
+				map(director -> director.getName());
 
 		return directors;
 	}
