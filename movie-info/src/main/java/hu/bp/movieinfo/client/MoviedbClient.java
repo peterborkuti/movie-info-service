@@ -71,7 +71,7 @@ public class MoviedbClient implements IMovieClient {
 
 		Flux<Movie> movieFlux = movies.
 				map(this::searchedMovieToMovie).
-				flatMap(movie -> movie.setDirectors(getDirectors(movie.getId()))).limitRate(1).delayElements(Duration.ofMillis(100));
+				flatMap(movie -> movie.setDirectors(getDirectors(movie.getId())));
 
 		return movieFlux;
 	}
@@ -112,6 +112,7 @@ public class MoviedbClient implements IMovieClient {
 
 	private Flux<String> getDirectors(String movieId) {
 		Mono<Credits> credits = getCredits(movieId);
+
 		Flux<String> directors =
 				credits.flatMapMany(c -> Flux.fromIterable(c.getCrew())).
 				filter(person -> "Director".equals(person.getJob())).
