@@ -90,9 +90,11 @@ public class MoviedbClient implements IMovieClient {
 	private Flux<SearchResult> getAllPages(String searchString) {
 		SearchResult firstPage = getPage(searchString, 1).block();
 
-		return Flux.fromStream(IntStream.iterate(2, i -> i + 1).boxed()).
+		Flux<SearchResult> otherPages = Flux.fromStream(IntStream.iterate(2, i -> i + 1).boxed()).
 				flatMap(i -> getPage(searchString, i), 1).
 				takeWhile(sr -> firstPage.getTotal_pages() >= sr.getPage());
+
+		return Flux.concat(Flux.just(firstPage), otherPages);
 	}
 
 	private Mono<SearchResult> getPage(String searchString, Integer page) {
