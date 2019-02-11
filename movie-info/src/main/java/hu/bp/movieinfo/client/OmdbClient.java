@@ -12,12 +12,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.net.URI;
 import java.util.List;
 
 /**
  * Gets movie list from omdb.
- * First it searches after a title. Omdb returns with one page with a movie list
+ * First it searches after a title. Omdb returns with one page with a movie list.
+ * Then it gets the detailed movie-data using its imdb id.
+ * After converting to the output format it returns with the movie list.
  */
 @Slf4j
 @Component
