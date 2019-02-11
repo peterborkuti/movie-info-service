@@ -51,7 +51,7 @@ public class MovieInfoControllerTest {
 
 		EntityExchangeResult<ListBody> result =
 				webClient.get().uri("/movies/{movieTitle}?api={apiName}", movieTitle, apiName).
-				accept(MediaType.APPLICATION_JSON).
+				accept(MediaType.APPLICATION_JSON_UTF8).
 				exchange().
 				expectStatus().isOk().
 				expectBody(ListBody.class).
