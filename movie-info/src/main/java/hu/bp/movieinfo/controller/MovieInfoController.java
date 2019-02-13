@@ -24,7 +24,7 @@ public class MovieInfoController {
 		this.logic = logic;
 	}
 
-	@GetMapping(value = "/{movieTitle}")
+	@GetMapping(value = "/{movieTitle}", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
 	public Map<String, List<Movie>> getMovieList(
 			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
 
