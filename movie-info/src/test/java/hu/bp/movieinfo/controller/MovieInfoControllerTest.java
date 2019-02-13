@@ -69,4 +69,8 @@ public class MovieInfoControllerTest {
 @Data
 class ListBody {
 	private List<Movie> movies = new ArrayList<>();
+
+	public ListBody() {
+		movies = new ArrayList<>();
+	}
 }
