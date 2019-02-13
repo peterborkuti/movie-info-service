@@ -9,6 +9,7 @@ import hu.bp.movieinfo.data.moviedb.SearchedMovie;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -47,6 +48,7 @@ public class MoviedbClient implements IMovieClient {
 	private WebClient client;
 	private WebClientHelper helper;
 
+	@Autowired
 	public MoviedbClient(MovieInfoConfigurationProperties properties, WebClientHelper helper) {
 		this.client = buildWebClient(BASE_URL);
 		this.helper = helper;

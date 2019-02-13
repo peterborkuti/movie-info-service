@@ -7,6 +7,7 @@ import hu.bp.movieinfo.data.omdb.DetailedMovie;
 import hu.bp.movieinfo.data.omdb.SearchResult;
 import hu.bp.movieinfo.data.omdb.SearchedMovie;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -32,6 +33,7 @@ public class OmdbClient implements IMovieClient {
 	private final WebClient client;
 	private final WebClientHelper helper;
 
+	@Autowired
 	public OmdbClient(MovieInfoConfigurationProperties properties, WebClientHelper helper) {
 		API_KEY = properties.getOmdbapi_api_key();
 

@@ -10,7 +10,7 @@ import java.time.Duration;
 @Slf4j
 @Service
 public class WebClientHelper {
-	public <T> Mono<T> webGet(WebClient client, String url, String[] urlArgs, Class bodyClass, final Mono<T> monoObject) {
+	public <T> Mono<T> webGet(WebClient client, String url, String[] urlArgs, Class<T> bodyClass, final Mono<T> monoObject) {
 		Mono<T> mono = monoObject;
 
 		try {
