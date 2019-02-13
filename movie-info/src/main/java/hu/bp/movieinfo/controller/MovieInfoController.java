@@ -31,7 +31,7 @@ public class MovieInfoController {
 		return logic.getMovieList(movieTitle, apiName);
 	}
 
-	@GetMapping(value = "/flux/{movieTitle}")
+	@GetMapping(value = "/flux/{movieTitle}", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
 	public Flux<Movie> getMovieFlux(
 			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
 		return logic.getMovieFlux(movieTitle, apiName);
