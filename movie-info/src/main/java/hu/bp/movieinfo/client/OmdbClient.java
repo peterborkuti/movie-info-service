@@ -24,11 +24,11 @@ import java.util.List;
 @Slf4j
 @Component
 public class OmdbClient implements IMovieClient {
-	private static String OMDBAPI_URL = "/?apikey={API_KEY}&{command}={commandParam}";
-	private static String SEARCH_COMMAND = "s";
-	private static String DETAIL_COMMAND = "i";
-	private static String BASE_URL = "http://www.omdbapi.com";
+	private final static String OMDBAPI_URL = "/?apikey={API_KEY}&{command}={commandParam}";
+	private final static String SEARCH_COMMAND = "s";
+	private final static String DETAIL_COMMAND = "i";
 
+	private final String BASE_URL;
 	private final String API_KEY;
 	private final WebClient client;
 	private final WebClientHelper helper;
@@ -36,6 +36,7 @@ public class OmdbClient implements IMovieClient {
 	@Autowired
 	public OmdbClient(MovieInfoConfigurationProperties properties, WebClientHelper helper) {
 		API_KEY = properties.getOmdbapi_api_key();
+		BASE_URL = properties.getOmdbapi_base_url();
 
 		client = WebClient.builder().
 				baseUrl(BASE_URL).

@@ -37,22 +37,25 @@ import java.util.stream.IntStream;
 @Slf4j
 @Component
 public class MoviedbClient implements IMovieClient {
-	private static int MAX_PAGES = 10;
-	private static final String BASE_URL = "https://api.themoviedb.org";
 	private static final String CREDITS_URL = "/3/movie/{movieId}/credits?api_key={API_KEY}";
 	private static final String SEARCH_URL =
 			"/3/search/movie?api_key={API_KEY}&query={searchString}&page={page}";
 
+	private String BASE_URL;
 	private String API_KEY;
+	private int MAX_PAGES;
 
 	private WebClient client;
 	private WebClientHelper helper;
 
 	@Autowired
 	public MoviedbClient(MovieInfoConfigurationProperties properties, WebClientHelper helper) {
-		this.client = buildWebClient(BASE_URL);
-		this.helper = helper;
 		this.API_KEY = properties.getThemoviedb_api_key();
+		this.BASE_URL = properties.getThemoviedb_base_url();
+		this.MAX_PAGES = properties.getThemoviedb_max_pages();
+		this.helper = helper;
+
+		this.client = buildWebClient(BASE_URL);
 	}
 
 	@Override

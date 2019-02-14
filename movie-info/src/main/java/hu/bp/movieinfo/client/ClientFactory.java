@@ -23,7 +23,7 @@ public class ClientFactory {
 		clients.stream().forEach(client -> clientCache.put(client.getApiName(), client));
 	}
 
-	public static IMovieClient get(String apiName) {
+	public IMovieClient get(String apiName) {
 		IMovieClient client = clientCache.get(apiName);
 
 		if (client == null) {
