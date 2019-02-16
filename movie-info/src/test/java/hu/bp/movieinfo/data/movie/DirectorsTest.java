@@ -1,20 +1,20 @@
 package hu.bp.movieinfo.data.movie;
 
 import hu.bp.movieinfo.data.Movie;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class DirectorsTest {
 	@Test
 	public void stringSetterShouldDealWithBasicCases() {
 		Movie movie = new Movie();
-		assertNotNull("default should be empty", movie.getDirectors());
+		assertNotNull(movie.getDirectors());
 
 		movie.setDirectors((String)null);
 		assertNotNull(movie.getDirectors());
@@ -64,8 +64,7 @@ public class DirectorsTest {
 
 		list.set(0, "other");
 		assertEquals(
-				"Movie should copy list-values not only references",
-				director1, movie.getDirectors().get(0));
+				director1, movie.getDirectors().get(0), "Movie should copy list-values not only references");
 	}
 
 	@Test

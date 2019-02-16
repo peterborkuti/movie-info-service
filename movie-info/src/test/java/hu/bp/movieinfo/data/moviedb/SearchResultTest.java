@@ -1,11 +1,10 @@
 package hu.bp.movieinfo.data.moviedb;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import hu.bp.movieinfo.data.moviedb.SearchResult;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 
 public class SearchResultTest {
 	@Test

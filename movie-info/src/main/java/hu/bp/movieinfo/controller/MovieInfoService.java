@@ -3,18 +3,18 @@ package hu.bp.movieinfo.controller;
 import hu.bp.movieinfo.client.ClientFactory;
 import hu.bp.movieinfo.client.IMovieClient;
 import hu.bp.movieinfo.data.Movie;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Component
-public class MovieInfoControllerLogic {
+@Service
+public class MovieInfoService {
 	private ClientFactory clientFactory;
 
-	public MovieInfoControllerLogic(ClientFactory clientFactory) {
+	public MovieInfoService(ClientFactory clientFactory) {
 		this.clientFactory = clientFactory;
 	}
 

@@ -1,9 +1,8 @@
 package hu.bp.movieinfo.data.moviedb;
 
-import hu.bp.movieinfo.data.moviedb.SearchedMovie;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class SearchedMovieTest {
 	@Test

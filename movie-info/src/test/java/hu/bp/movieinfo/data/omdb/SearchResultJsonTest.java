@@ -1,20 +1,23 @@
 package hu.bp.movieinfo.data.omdb;
 
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.json.JsonTest;
 import org.springframework.boot.test.json.JacksonTester;
 import org.springframework.boot.test.json.JsonContent;
-import org.springframework.test.context.junit4.SpringRunner;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@RunWith(SpringRunner.class)
 @JsonTest
 public class SearchResultJsonTest {
-	@Autowired
 	private JacksonTester<SearchResult> json;
+
+	@BeforeEach
+	public void setUp() {
+		ObjectMapper objectMapper = new ObjectMapper();
+		JacksonTester.initFields(this, objectMapper);
+	}
 
 	@Test
 	public void testItShouldSerializeWithCamelcaseSearch() throws Exception {

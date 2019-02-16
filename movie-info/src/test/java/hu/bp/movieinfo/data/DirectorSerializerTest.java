@@ -1,21 +1,24 @@
 package hu.bp.movieinfo.data;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-@RunWith(MockitoJUnitRunner.class)
 public class DirectorSerializerTest {
 	@Mock
 	private JsonGenerator jsonGenerator;
+
+	@BeforeEach
+	public void setUp(){
+		MockitoAnnotations.initMocks(this);
+	}
 
 	@Test
 	public void oneDirectorShouldBeSerializedAsString() throws IOException {
