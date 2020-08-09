@@ -12,6 +12,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
+@CrossOrigin
 @RequestMapping(value="movies")
 public class MovieInfoController {
 	private MovieInfoService service;
@@ -20,7 +21,7 @@ public class MovieInfoController {
 		this.service = service;
 	}
 
-	@GetMapping(value = "/{api}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+	@GetMapping(value = "/synchron/{api}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
 	public Map<String, List<Movie>> getMovieList(
 			@PathVariable String api, @RequestParam("title") String title) {
 
