@@ -20,16 +20,16 @@ public class MovieInfoController {
 		this.service = service;
 	}
 
-	@GetMapping(value = "/{movieTitle}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
+	@GetMapping(value = "/{api}", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
 	public Map<String, List<Movie>> getMovieList(
-			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
+			@PathVariable String api, @RequestParam("title") String title) {
 
-		return service.getMovieList(movieTitle, apiName);
+		return service.getMovieList(title, api);
 	}
 
-	@GetMapping(value = "/flux/{movieTitle}", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
+	@GetMapping(value = "/flux/{api}", produces = MediaType.APPLICATION_STREAM_JSON_VALUE)
 	public Flux<Movie> getMovieFlux(
-			@PathVariable String movieTitle, @RequestParam("api") String apiName) {
-		return service.getMovieFlux(movieTitle, apiName);
+			@PathVariable String api, @RequestParam("title") String title) {
+		return service.getMovieFlux(title, api);
 	}
 }

@@ -55,7 +55,7 @@ public class MovieInfoControllerTest {
 	public void getMovieListShouldCallServiceAndReturnWithAHashMap() throws Exception {
 		EntityExchangeResult<String> result =
 				webClient.get().uri(
-						"/movies/{movieTitle}?api={apiName}",
+						"/movies/{api}?title={movieTitle}",
 						Utils.expectedSearchValue,
 						Utils.expectedApiName).
 				accept(MediaType.APPLICATION_JSON_UTF8).
